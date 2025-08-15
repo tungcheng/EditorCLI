@@ -5,39 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.IO;
-
-// =======================================================================================
-// 1. ATTRIBUTES for Command Discovery
-// =======================================================================================
-
-/// <summary>
-/// Marks a class as a container for editor commands.
-/// </summary>
-[AttributeUsage(AttributeTargets.Class)]
-public class EditorCommandClassAttribute : Attribute { }
-
-/// <summary>
-/// Marks a method as an editor command.
-/// </summary>
-[AttributeUsage(AttributeTargets.Method)]
-public class EditorCommandAttribute : Attribute
-{
-    public string Scope { get; }
-    public string Name { get; }
-    public string Description { get; set; } = "No description provided.";
-    public string Usage { get; set; } = "No usage information provided.";
-
-    public EditorCommandAttribute(string scope, string name)
-    {
-        Scope = scope.ToLower();
-        Name = name.ToLower();
-    }
-}
-
-// =======================================================================================
-// 2. MAIN EDITOR WINDOW
-// =======================================================================================
 
 public class CommandLineEditor : EditorWindow
 {
@@ -413,76 +380,5 @@ public class CommandLineEditor : EditorWindow
     public static void SetContext(string key, object value)
     {
         _context[key] = value;
-    }
-}
-
-// =======================================================================================
-// 4. EXAMPLE COMMANDS
-// =======================================================================================
-
-[EditorCommandClass]
-public class SampleCommands
-{
-    [EditorCommand("math", "add", Description = "Adds two integer numbers.", Usage = "math add <num1> <num2>")]
-    public string Add(int a, int b)
-    {
-        return $"{a} + {b} = {a + b}";
-    }
-
-    [EditorCommand("math", "multiply", Description = "Multiplies two float numbers.", Usage = "math multiply <num1> <num2>")]
-    public string Multiply(float a, float b)
-    {
-        return $"{a} * {b} = {a * b}";
-    }
-}
-
-[EditorCommandClass]
-public class DirectoryCommands
-{
-    [EditorCommand("dir", "current", Description = "Shows the current working directory.")]
-    public string CurrentDirectory()
-    {
-        return CommandLineEditor.Context.TryGetValue("CurrentDirectory", out var dir) 
-            ? dir.ToString() 
-            : "Error: CurrentDirectory not set in context.";
-    }
-
-    [EditorCommand("dir", "cd", Description = "Changes the current directory. Use '.' to go up.", Usage = "dir cd <path>")]
-    public string ChangeDirectory(string path)
-    {
-        if (!CommandLineEditor.Context.TryGetValue("CurrentDirectory", out var currentDirObj))
-        {
-            return "Error: CurrentDirectory not set in context.";
-        }
-        
-        string currentDir = currentDirObj.ToString();
-        string newDir;
-
-        if (path == ".")
-        {
-            var parent = Directory.GetParent(currentDir);
-            if (parent == null || !parent.FullName.StartsWith(Application.dataPath, StringComparison.OrdinalIgnoreCase))
-            {
-                return $"Error: Cannot navigate above project 'Assets' folder.";
-            }
-            newDir = parent.FullName;
-        }
-        else
-        {
-            newDir = Path.Combine(currentDir, path);
-        }
-        
-        // Normalize path separators
-        newDir = newDir.Replace("\\", "/");
-
-        if (Directory.Exists(newDir))
-        {
-            CommandLineEditor.SetContext("CurrentDirectory", newDir);
-            return $"Current directory is now: {newDir}";
-        }
-        else
-        {
-            return $"Error: Directory not found at '{newDir}'";
-        }
     }
 }
