@@ -197,7 +197,7 @@ public class CommandLineEditor : EditorWindow
 
     private void UpdateInfoArea()
     {
-        var allScopes = _builtInCommands.Keys.Union(_discoveredCommands.Keys).Distinct().OrderBy(s => s);
+        var allScopes = _discoveredCommands.Keys.Distinct().OrderBy(s => s);
         _scopesLabel.text = $"Scopes: {string.Join(", ", allScopes)}";
         _directoryLabel.text = $"Directory: {(_context.TryGetValue("CurrentDirectory", out var dir) ? dir : "N/A")}";
     }
@@ -295,7 +295,7 @@ public class CommandLineEditor : EditorWindow
                 var helpText = "Available Built-in Commands:\n" +
                                string.Join("\n", _builtInCommands.Select(kvp => $"  {kvp.Key,-10} - {kvp.Value.Description}")) +
                                "\n\nAvailable Scopes (use 'help <scope>' for details):\n" +
-                               string.Join("\n", _discoveredCommands.Keys.Select(s => $"  {s}"));
+                               string.Join("\n", GetAvailableScopes().Select(s => $"  {s}"));
                 return helpText;
             }
             else
@@ -341,9 +341,13 @@ public class CommandLineEditor : EditorWindow
         // Scopes
         _builtInCommands["scopes"] = new CommandInfo((args) =>
         {
-            var allScopes = _builtInCommands.Keys.Union(_discoveredCommands.Keys).Distinct().OrderBy(s => s);
-            return "Available Scopes:\n" + string.Join("\n", allScopes.Select(s => $"  {s}"));
+            return "Available Scopes:\n" + string.Join("\n", GetAvailableScopes().Select(s => $"  {s}"));
         }, "Lists all available command scopes.");
+    }
+
+    private static IEnumerable<string> GetAvailableScopes()
+    {
+        return _discoveredCommands.Keys.Distinct().OrderBy(s => s);
     }
 
     // --- Helper class for storing command data ---
