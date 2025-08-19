@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.IO;
 using System.Text;
+using Newtonsoft.Json;
 
 namespace Techies
 {
@@ -15,10 +16,18 @@ namespace Techies
         // --- Static Context & Command Storage ---
         private static readonly Dictionary<string, CommandInfo> _builtInCommands = new Dictionary<string, CommandInfo>();
         private static readonly Dictionary<string, Dictionary<string, CommandInfo>> _discoveredCommands = new Dictionary<string, Dictionary<string, CommandInfo>>();
-        private readonly List<string> _commandHistory = new();
+        private List<string> _commandHistory;
         private int _historyIndex = -1;
 
         private static List<string> _directoryPath = new List<string>();
+
+        class OutputEntry
+        {
+            public string Command {get; set; }
+            public string Output { get; set; }
+        }
+
+        private List<OutputEntry> _outputEntries;
 
         // --- UI Elements ---
         private VisualElement _infoArea;
@@ -27,7 +36,7 @@ namespace Techies
         private TextField _commandInput;
         private ScrollView _outputArea;
 
-        [MenuItem("Tools/Command Line Editor")]
+        [MenuItem("Window/Command Line Editor")]
         public static void ShowWindow()
         {
             CommandLineEditor wnd = GetWindow<CommandLineEditor>();
@@ -39,12 +48,12 @@ namespace Techies
             DiscoverAllCommands();
         }
 
-        void OnGUI()
+        private void OnGUI()
         {
             HandleArrowKeyInput();
         }
 
-        void HandleArrowKeyInput()
+        private void HandleArrowKeyInput()
         {
             Event currentEvent = Event.current;
             if (currentEvent.type == EventType.KeyDown || currentEvent.type == EventType.KeyUp)
@@ -60,7 +69,7 @@ namespace Techies
             }
         }
 
-        public void CreateGUI()
+        private void CreateGUI()
         {
             // --- Root Visual Element Setup ---
             var root = rootVisualElement;
@@ -101,7 +110,19 @@ namespace Techies
 
             // --- Initial State ---
             UpdateInfoArea();
-            AddOutputEntry("System", "Welcome to the Unity Command Line Editor. Type 'help' for commands.");
+
+            LoadHistory();
+            if (_outputEntries.Count > 0)
+            {
+                foreach (var entry in _outputEntries)
+                {
+                    AddOutputEntry(entry.Command, entry.Output, false);
+                }
+            }
+            else
+            {
+                AddOutputEntry("System", "Welcome to the Unity Command Line Editor. Type 'help' for commands.");
+            }
 
             SetFocusCommandInput();
         }
@@ -176,8 +197,13 @@ namespace Techies
             .StartingIn(0);
         }
 
-        private void AddOutputEntry(string command, string output)
+        private void AddOutputEntry(string command, string output, bool isSaved = true)
         {
+            if (isSaved)
+            {
+                SaveHistory(command, output);
+            }
+
             var entryContainer = new VisualElement();
             entryContainer.style.marginTop = 5;
             entryContainer.style.marginBottom = 5;
@@ -266,13 +292,6 @@ namespace Techies
             string commandName = parts[0].ToLower();
             string output;
 
-            // Add to history, avoiding duplicates at the end
-            if (_commandHistory.Count == 0 || _commandHistory.Last() != commandText)
-            {
-                _commandHistory.Add(commandText);
-                _historyIndex = _commandHistory.Count;
-            }
-
             // Check built-in commands first
             if (_builtInCommands.ContainsKey(commandName))
             {
@@ -311,7 +330,7 @@ namespace Techies
             _commandInput.value = _commandHistory[_historyIndex];
         }
 
-        private static void DiscoverAllCommands()
+        private void DiscoverAllCommands()
         {
             // --- Clear and Register Built-in Commands ---
             _builtInCommands.Clear();
@@ -354,7 +373,7 @@ namespace Techies
             }
         }
 
-        private static void RegisterBuiltInCommands()
+        private void RegisterBuiltInCommands()
         {
             // Help
             _builtInCommands["help"] = new CommandInfo((args) =>
@@ -385,6 +404,7 @@ namespace Techies
             {
                 // The actual clearing happens in the window instance, this just returns a confirmation.
                 var window = GetWindow<CommandLineEditor>();
+                ClearHistory();
                 window._outputArea.Clear();
                 return "Output cleared.";
             }, "Clears the output area.");
@@ -412,6 +432,44 @@ namespace Techies
             {
                 return "Available Scopes:\n" + string.Join("\n", GetAvailableScopes().Select(s => $"  {s}"));
             }, "Lists all available command scopes.");
+        }
+
+        private void LoadHistory()
+        {
+            _historyIndex = EditorPrefs.GetInt("CommandLineEditor.HistoryIndex", -1);
+            _commandHistory = JsonConvert.DeserializeObject<List<string>>(EditorPrefs.GetString("CommandLineEditor.History", "[]")) ?? new List<string>();
+            _outputEntries = JsonConvert.DeserializeObject<List<OutputEntry>>(EditorPrefs.GetString("CommandLineEditor.Output", "[]")) ?? new List<OutputEntry>();
+        }
+
+        private void ClearHistory()
+        {
+            _commandHistory.Clear();
+            _historyIndex = -1;
+            EditorPrefs.DeleteKey("CommandLineEditor.History");
+            EditorPrefs.DeleteKey("CommandLineEditor.HistoryIndex");
+            _outputEntries.Clear();
+            EditorPrefs.DeleteKey("CommandLineEditor.Output");
+        }
+
+        private void SaveHistory(string command, string output)
+        {
+            if (command == "clear") return;
+
+            if (_commandHistory.Contains(command))
+            {
+                _commandHistory.Remove(command);
+            }
+            
+            if (command != "System" && command != "clear")
+            {
+                _commandHistory.Add(command);
+                _historyIndex = _commandHistory.Count;
+                EditorPrefs.SetString("CommandLineEditor.History", JsonConvert.SerializeObject(_commandHistory));
+                EditorPrefs.SetInt("CommandLineEditor.HistoryIndex", _historyIndex);
+            }
+
+            _outputEntries.Add(new OutputEntry { Command = command, Output = output });
+            EditorPrefs.SetString("CommandLineEditor.Output", JsonConvert.SerializeObject(_outputEntries));
         }
 
         private static IEnumerable<string> GetAvailableScopes()
