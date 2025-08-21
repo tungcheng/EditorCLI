@@ -1,0 +1,14 @@
+{
+  "name": "com.techies.editorcli",
+  "displayName": "Editor CLI",
+  "version": "1.0.0",
+  "unity": "2022.3",
+  "description": "Command Line Interface inside Unity Editor",
+  "author": {
+    "name": "TungCheng",
+    "url": "https://github.com/tungcheng"
+  },
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}
