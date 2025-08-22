@@ -1,18 +1,33 @@
+using UnityEditor;
+
 namespace Techies
 {
     [EditorCommandClass]
     public class UnityCmd
     {
-        [EditorCommand("math", "add", Description = "Adds two integer numbers.", Usage = "math add <num1> <num2>")]
-        public string Add(int a, int b)
+        [EditorCommand("set", "namespace", Description = "Set project root namespace", Usage = "set namespace <name>")]
+        public string SetNamespace(string rootNamespace)
         {
-            return $"{a} + {b} = {a + b}";
+            EditorSettings.projectGenerationRootNamespace = rootNamespace;
+            return "root namespace is set: " + rootNamespace;
         }
 
-        [EditorCommand("math", "multiply", Description = "Multiplies two float numbers.", Usage = "math multiply <num1> <num2>")]
-        public string Multiply(float a, float b)
+        [EditorCommand("reset", "namespace", Description = "Reset project root namepsace", Usage = "reset namespace")]
+        public string ResetNamespace()
         {
-            return $"{a} * {b} = {a * b}";
+            EditorSettings.projectGenerationRootNamespace = null;
+            return "root namespace is reset to empty";
+        }
+
+        [EditorCommand("get", "namespace", Description = "Get project root namespace", Usage = "get namespace")]
+        public string GetNamespace()
+        {
+            var rootNamespace = EditorSettings.projectGenerationRootNamespace;
+            if (string.IsNullOrEmpty(rootNamespace))
+            {
+                return $"root namespace is empty";
+            }
+            return $"current root namespace: {rootNamespace}";
         }
     }
 }
