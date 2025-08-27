@@ -23,7 +23,7 @@ namespace Techies
 
         class OutputEntry
         {
-            public string Command {get; set; }
+            public string Command { get; set; }
             public string Output { get; set; }
         }
 
@@ -50,10 +50,10 @@ namespace Techies
 
         private void OnGUI()
         {
-            HandleArrowKeyInput();
+            HandleSpecialKeyInput();
         }
 
-        private void HandleArrowKeyInput()
+        private void HandleSpecialKeyInput()
         {
             Event currentEvent = Event.current;
             if (currentEvent.type == EventType.KeyDown || currentEvent.type == EventType.KeyUp)
@@ -61,10 +61,12 @@ namespace Techies
                 if (currentEvent.keyCode == KeyCode.UpArrow ||
                     currentEvent.keyCode == KeyCode.DownArrow ||
                     currentEvent.keyCode == KeyCode.LeftArrow ||
-                    currentEvent.keyCode == KeyCode.RightArrow)
+                    currentEvent.keyCode == KeyCode.RightArrow ||
+                    currentEvent.keyCode == KeyCode.Return ||
+                    currentEvent.keyCode == KeyCode.KeypadEnter)
                 {
                     currentEvent.Use();
-                    SetFocusCommandInput();
+                    SetFocusCommandInput(null);
                 }
             }
         }
@@ -75,7 +77,7 @@ namespace Techies
             var root = rootVisualElement;
             root.style.flexGrow = 1;
             root.style.backgroundColor = new Color(0.1f, 0.1f, 0.1f); // Dark background
-            root.RegisterCallback<MouseDownEvent>(evt => SetFocusCommandInput()); // Focus input on any click
+            root.RegisterCallback<MouseDownEvent>(SetFocusCommandInput, TrickleDown.NoTrickleDown); // Focus input on any click
 
             // --- A: Information Area ---
             _infoArea = new VisualElement();
@@ -94,7 +96,11 @@ namespace Techies
                 selectAllOnMouseUp = false,
                 multiline = false,
             };
-            _commandInput.RegisterCallback<KeyDownEvent>(OnInputEnter);
+#if UNITY_6000_0_OR_NEWER
+            _commandInput.textEdition.placeholder = "Type a command and press Enter...";
+            _commandInput.textEdition.hidePlaceholderOnFocus = false;
+#endif
+            _commandInput.RegisterCallback<KeyDownEvent>(OnInputEnter, TrickleDown.TrickleDown);
             root.Add(_commandInput);
 
             // --- C: Output ScrollView Area ---
@@ -124,7 +130,7 @@ namespace Techies
                 AddOutputEntry("System", "Welcome to the Unity Command Line Editor. Type 'help' for commands.");
             }
 
-            SetFocusCommandInput();
+            SetFocusCommandInput(null);
         }
 
         private void ApplyStyles()
@@ -168,29 +174,33 @@ namespace Techies
                     ExecuteCommand(commandText);
                     _commandInput.value = ""; // Clear input after execution
                 }
-                SetFocusCommandInput();
+                SetFocusCommandInput(e);
                 return;
             }
             if (e.keyCode == KeyCode.UpArrow)
             {
                 NavigateHistory(-1); // Navigate to previous command
-                SetFocusCommandInput();
+                SetFocusCommandInput(e);
                 return;
             }
             if (e.keyCode == KeyCode.DownArrow)
             {
                 NavigateHistory(1); // Navigate to next command
-                SetFocusCommandInput();
+                SetFocusCommandInput(e);
                 return;
             }
         }
 
-        private void SetFocusCommandInput()
+        private void SetFocusCommandInput(EventBase evt)
         {
-            _commandInput.Focus();
+            var inputField = _commandInput.Q("unity-text-input");
+            evt?.StopPropagation();
+            inputField.Focus();
+            _commandInput.cursorIndex = _commandInput.value.Length;
+            _commandInput.selectIndex = _commandInput.value.Length;
             _commandInput.schedule.Execute(() =>
             {
-                _commandInput.Q("unity-text-input").Focus();
+                inputField.Focus();
                 _commandInput.cursorIndex = _commandInput.value.Length;
                 _commandInput.selectIndex = _commandInput.value.Length;
             })
@@ -459,7 +469,7 @@ namespace Techies
             {
                 _commandHistory.Remove(command);
             }
-            
+
             if (command != "System" && command != "clear")
             {
                 _commandHistory.Add(command);
