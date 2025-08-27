@@ -91,6 +91,7 @@ namespace Techies
             _commandInput = new TextField
             {
                 name = "command-input",
+                labelElement = { style = { unityFontStyleAndWeight = FontStyle.Bold } },
                 value = "",
                 selectAllOnFocus = false,
                 selectAllOnMouseUp = false,
@@ -99,6 +100,8 @@ namespace Techies
 #if UNITY_6000_0_OR_NEWER
             _commandInput.textEdition.placeholder = "Type a command and press Enter...";
             _commandInput.textEdition.hidePlaceholderOnFocus = false;
+#else
+            _commandInput.label = "Enter a command:";
 #endif
             _commandInput.RegisterCallback<KeyDownEvent>(OnInputEnter, TrickleDown.TrickleDown);
             root.Add(_commandInput);
